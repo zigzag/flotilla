@@ -6,6 +6,6 @@ begin
 rescue Exception
   Flotilla.jrails_present = false
 end
-ActionView::Base.send :include, Flotilla
+ActionView::Helpers::JavaScriptHelper.send :include, Flotilla
 
 
