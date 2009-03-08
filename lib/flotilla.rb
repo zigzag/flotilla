@@ -4,10 +4,21 @@ rescue LoadError
   p "Flotilla will not work without the 'json' gem"
 end
 
-module ActionView
-  module Helpers
-    module ScriptaculousHelper
-      
+module Flotilla
+    
+    @@jrails_present = false
+    mattr_accessor :jrails_present
+  
+    def flot_graphs_includes
+      includes= ""
+      unless Flotilla.jrails_present  
+        includes << javascript_include_tag('jquery.js') + "\n"  
+        includes <<  "<script language='JavaScript' type='text/javascript'> jQuery.noConflict();</script>\n"
+      end
+      includes << javascript_include_tag('jquery.flot.pack.js')+ "\n"
+      includes << "<!--[if IE]>\n#{javascript_include_tag('excanvas.pack')}\n<![endif]-->"
+    end
+    
       # Insert a flot chart into the page.  <tt>placeholder</tt> should be the 
       # name of the div that will hold the chart, <tt>collections</tt> is a hash 
       # of legends (as strings) and datasets with options as hashes, <tt>options</tt>
@@ -33,8 +44,8 @@ module ActionView
           options[:yaxis] ||= {}
           options[:yaxis].merge!({ :mode => 'time' })
         end
-
-        chart_js = "$.plot($('##{placeholder}'), #{data}, #{options.to_json});"
+        jQueryString= Flotilla.jrails_present ? '$' : 'jQuery'
+        chart_js = "#{jQueryString}.plot(#{jQueryString}('##{placeholder}'), #{data}, #{options.to_json});"
         html_options[:js_tags] ? javascript_tag(chart_js) : chart_js
       end
 
@@ -62,8 +73,4 @@ module ActionView
         end
         return data_sets.to_json, x_is_date, y_is_date
       end
-
-    end
-  end
 end
-
