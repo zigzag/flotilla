@@ -1,3 +1,0 @@
-[submodule "javascripts/flot"]
-	path = javascripts/flot
-	url = git://github.com/btburnett3/flot.git
