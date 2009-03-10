@@ -14,7 +14,7 @@
         var series = [],
             options = {
                 // the color theme used for graphs
-                colors: ["#59bb14", "#39a5fe", "#dc5f13", "#edc240", "#afd8f8", "#9440ed"],
+                colors: ["#edc240", "#afd8f8", "#cb4b4b", "#4da74d", "#9440ed"],
                 legend: {
                     show: true,
                     noColumns: 1, // number of colums in legend table
@@ -73,7 +73,8 @@
                     barWidth: 1, // in units of the x axis
                     fill: true,
                     fillColor: null,
-                    align: "left" // or "center"
+                    align: "left", // or "center" 
+                    horizontal: false // when horizontal, left is now top
                 },
                 threshold: null, // or { below: number, color: color spec}
                 grid: {
@@ -101,17 +102,6 @@
                     color: "#aa0000"
                 },
                 shadowSize: 3
-                , pies: {
-                   show: false,
-                   radius: 60,
-                   borderWidth: 1,
-                   fill: true,
-                   fillColor: null,
-                   fillOpacity: 0.85,
-                   labelWidth: 30,
-                   fontSize: 10,
-                   autoScale: false
-                }
             },
         canvas = null,      // the canvas for the plot itself
         overlay = null,     // canvas for interactive stuff on top of plot
@@ -124,7 +114,7 @@
         plotWidth = 0, plotHeight = 0,
         // dedicated to storing data for buggy standard compliance cases
         workarounds = {};
-        var barDataRange = [];	//ugly hack for bar data click points
+        
         this.setData = setData;
         this.setupGrid = setupGrid;
         this.draw = draw;
@@ -141,15 +131,15 @@
         
         // initialize
         parseOptions(options_);
-        if(options.makeRandomColor) { options.colors = makeRandomColor(options.colors); }
         setData(data_);
         constructCanvas();
         setupGrid();
         draw();
 
+
         function setData(d) {
             series = parseData(d);
-            setBarWidth();
+
             fillInSeriesOptions();
             processData();
         }
@@ -310,7 +300,7 @@
                 // determine the increment
                 if (s.bars.show) {
                     s.datapoints.incr = 3;
-                    format.push({ default: 0 });
+                    format.push({ d: 0 });
                 }
 
                 /*
@@ -319,12 +309,6 @@
                 }*/
                 
                 
-                if (series[i].bars.show) {
-                    // make sure we got room for the bar
-                    mindelta = series[i].bars.align == "left" ? 0 : -series[i].bars.barWidth/2;
-                    maxdelta = mindelta + series[i].bars.barWidth;
-                }
-
                 axisx.used = axisy.used = true;
                 incr = s.datapoints.incr;
                 
@@ -361,7 +345,7 @@
                         x = y = null; // make sure everything is cleared
 
                     for (m = 2; m < incr; ++m)
-                        points[k + m] = p[m] == null ? format[m-2].default : p[m];
+                        points[k + m] = p[m] == null ? format[m-2].d : p[m];
 
                     points[k + 1] = y;
                     points[k] = x;
@@ -421,7 +405,6 @@
                         threspoints = thresholded.datapoints.points;
 
                     // ordinary points
-                   if (points) {
                     for (j = 0; j < points.length; j += incr) {
                         x = points[j];
                         y = points[j + 1];
@@ -434,7 +417,6 @@
                         p.push(x);
                         p.push(y);
                     }
-                   }
 
                     // possibly split lines
                     if (s.lines.show) {
@@ -535,7 +517,6 @@
                 setRange(axis, options);
                 prepareTickGeneration(axis, options);
                 setTicks(axis, options);
-                extendXRangeIfNeededByBar(axis, options);
                 // add transformation helpers
                 if (axis == axes.xaxis || axis == axes.x2axis) {
                     // data point to canvas coordinate
@@ -553,7 +534,7 @@
                 setupAxis(axes[axis], options[axis]);
 
             setSpacing();
-            if (!options.pies.show) { insertLabels(); }
+            insertLabels();
             insertLegend();
         }
         
@@ -979,23 +960,6 @@
         }
         
         function draw() {
-          if(options.bars.show)
-		  {
-				axes.xaxis.max += 1;
-				axes.xaxis.min -= 1;
-				extendXRangeIfNeededByBar(axes.xaxis,options);
-				setSpacing();
-				drawGrid();
-				//drawLabels();
-				drawMyBarSeries(series, barDataRange);
-		  }
-		  else if (options.pies.show)
-          {
-                preparePieData(series);
-                drawMyPieSeries(series);
-          }
-          else
-          {
             drawGrid();
             for (var i = 0; i < series.length; ++i) {
                 var s = series[i];
@@ -1005,7 +969,6 @@
                 else
                     drawSeries(s);
             }
-          }
         }
 
         function extractRange(ranges, coord) {
@@ -1046,19 +1009,6 @@
 
             // draw background, if any
             if (options.grid.backgroundColor) {
-                if( options.grid.backgroundColor.constructor == Array ){
-                        if(options.grid.backgroundColor.length == 1) {
-                                ctx.fillStyle = options.grid.backgroundColor[0];
-                        } else {
-                                var lineargradient = ctx.createLinearGradient(0,0,1,plotHeight);
-                                for (i = 0; i < options.grid.backgroundColor.length; ++i) {
-                                        lineargradient.addColorStop( i / (options.grid.backgroundColor.length - 1),options.grid.backgroundColor[i]);
-                                }
-                                ctx.fillStyle = lineargradient;
-                        }
-                } else {
-                       ctx.fillStyle = options.grid.backgroundColor; 
-                }
                 ctx.fillStyle = getColorOrGradient(options.grid.backgroundColor, plotHeight, 0, "rgba(255, 255, 255, 0)");
                 ctx.fillRect(0, 0, plotWidth, plotHeight);
             }
@@ -1199,13 +1149,7 @@
             var margin = options.grid.labelMargin + options.grid.borderWidth;
             
             addLabels(axes.xaxis, function (tick, axis) {
-	            if (options.bars.show) { 
-	            	leftSpacing = ((axis.p2c(tick.v)) / (axis.ticks.length+2) * axis.ticks.length ) +20; 
-            	} else {
-            		leftSpacing = axis.p2c(tick.v);
-            		if (leftSpacing > 600) { leftSpacing = leftSpacing - 15; }
-        		}
-                return '<div style="position:absolute;top:' + (plotOffset.top + plotHeight + margin) + 'px;left:' + (plotOffset.left + leftSpacing - axis.labelWidth/2) + 'px;width:' + axis.labelWidth + 'px;text-align:center" class="tickLabel">' + tick.label + "</div>";
+                return '<div style="position:absolute;top:' + (plotOffset.top + plotHeight + margin) + 'px;left:' + (plotOffset.left + axis.p2c(tick.v) - axis.labelWidth/2) + 'px;width:' + axis.labelWidth + 'px;text-align:center" class="tickLabel">' + tick.label + "</div>";
             });
             
             
@@ -1777,7 +1721,6 @@
                     maxy = maxDistance / axisy.scale;
 
                 if (s.lines.show || s.points.show) {
-                  if (points) {
                     for (j = 0; j < points.length; j += incr) {
                         var x = points[j], y = points[j + 1];
                         if (x == null)
@@ -1799,7 +1742,6 @@
                             item = [i, j / incr];
                         }
                     }
-                  }
                 }
                     
                 if (s.bars.show && !item) { // no other point can be nearby
@@ -1810,7 +1752,7 @@
                         var x = points[j], y = points[j + 1], b = points[j + 2];
                         if (x == null)
                             continue;
-                        /*
+  
                         // for a bar graph, the cursor must be inside the bar
                         if (series[i].bars.horizontal ? 
                             (mx <= Math.max(b, x) && mx >= Math.min(b, x) && 
@@ -1818,7 +1760,6 @@
                             (mx >= x + barLeft && mx <= x + barRight &&
                              my >= Math.min(b, y) && my <= Math.max(b, y)))
                                 item = [i, j / incr];
-                         */
                     }
                 }
             }
@@ -1908,28 +1849,6 @@
 
             triggerClickHoverEvent("plotclick", e,
                                    function (s) { return s["clickable"] != false; });
-            if(options.allowDataClick)
-            {
-                var dataPoint = {};
-                if(options.points.show)
-                {
-                    dataPoint = getDataClickPoint(crosshair.pos, options);
-                    target.trigger("dataclick", [dataPoint]);
-                }
-                else if(options.lines.show && options.points.show)
-                {
-                    dataPoint = getDataClickPoint(crosshair.pos, options);
-                    target.trigger("dataclick", [dataPoint]);
-                }
-                else if(options.bars.show)
-                {
-                    if(barDataRange.length > 0)
-                    {
-                        dataPoint = getDataClickPoint(crosshair.pos, options, barDataRange);
-                        target.trigger("dataclick", [dataPoint]);
-                    }
-                }
-            }
         }
 
         /*
@@ -2274,401 +2193,6 @@
                 
                 return gradient;
             }
-        }
-        
-        function makeRandomColor(colorSet)
-        {
-            var randNum = Math.floor(Math.random() * colorSet.length);
-            var randArr = [];
-            var newArr = [];
-            randArr.push(randNum);
-
-            while(randArr.length < colorSet.length)
-            {
-				var tempNum = Math.floor(Math.random() * colorSet.length);
-		
-				while(checkExisted(tempNum, randArr))
-					tempNum = Math.floor(Math.random() * colorSet.length);
-					
-				randArr.push(tempNum);
-			}
-
-			for(var j = 0 ; j < randArr.length; j++)
-			{
-				var idx = randArr[j];
-				newArr.push(colorSet[idx]);
-			}
-			
-			return newArr;
-		}
-
-		function checkExisted(needle, haystack)
-		{
-			var existed = false;
-			for(var i = 0; i < haystack.length; i++)
-			{
-				if(haystack[i] == needle)
-				{
-					existed = true;
-					break;
-				}
-			}
-			
-			return existed;
-		}
-
-		function setBarWidth()
-		{
-			if(options.bars.show && options.bars.autoScale)
-				options.bars.barWidth = 1 / series.length / 1.2;
-		}
-
-        function extendXRangeIfNeededByBar(axis, axisOptions) {
-            if (axisOptions.max == null) {
-                // great, we're autoscaling, check if we might need a bump
-
-                var newmax = axis.max;
-                for (var i = 0; i < series.length; ++i)
-                    if (series[i].bars.show && series[i].bars.barWidth + axis.datamax > newmax)
-                        newmax = axis.datamax + series[i].bars.barWidth;
-                axis.max = newmax;
-            }
-        }
-        
-        function preparePieData(series)
-        {
-            for(i = 0; i < series.length; i++)
-            {
-                var data = 0;
-                for(j = 0; j < series[i].data.length; j++)
-                    data += parseInt(series[i].data[j][1]);
-
-                series[i].data = data;
-            }
-        }
-
-        function drawPieShadow(anchorX, anchorY, radius, startAngle, endAngle)
-        {
-            var orgOpac = 0.1;
-
-            for(var m = 1; m <= options.shadowSize/2; m++)
-            {
-                //var opac = orgOpac  0.1 * m;
-                var opac = orgOpac + 0.1 * m;
-                //if(opac < 0)
-                //    opac = 0.1;
-
-                ctx.beginPath();
-                ctx.moveTo(anchorX + m, anchorY - m);
-                ctx.fillStyle = 'rgba(0,0,0,' + opac + ')';    
-                ctx.arc(anchorX + m, anchorY - m, radius, startAngle, endAngle, false);
-                ctx.fill();
-                ctx.closePath();
-            }
-        }
-
-        function drawMyPieSeries(series)
-        {
-            var sumData = 0;
-            var radius = 0;
-            var centerX = plotWidth/2;
-            var centerY = plotHeight/2;
-            if (!options.legend.show) {
-                centerX = canvasWidth/2;
-                centerY = canvasHeight/2;
-            }
-            
-            var startAngle = 0;
-            var endAngle = 0;
-            var fontSize = options.pies.fontSize;
-            var labelWidth = options.pies.labelWidth;
-
-            //determine Pie Radius
-            if(!options.pies.autoScale)
-                radius = options.pies.radius;
-            else
-                radius = (plotHeight * 0.85)/2;
-
-            var labelRadius = radius * 1.05;
-
-            for(i = 0; i < series.length; i++) {
-                sumData += series[i].data;
-                series[i].datapoints.points = null;
-            }
-            
-            // used to adjust labels so that everything adds up to 100%
-            totalPct = 0;
-
-            for(j = 0; j < series.length; j++)
-            {
-                var pct = series[j].data / sumData;
-                startAngle = endAngle;
-                endAngle += pct * (2 * Math.PI);
-                var sliceMiddle = (endAngle - startAngle) / 2 + startAngle;
-                var labelX = centerX + Math.cos(sliceMiddle) * labelRadius;
-                var labelY = centerY + Math.sin(sliceMiddle) * labelRadius;
-                var anchorX = centerX + Math.cos(sliceMiddle) * 2;
-                var anchorY = centerY + Math.sin(sliceMiddle) * 2;
-                var textAlign = null;
-                var verticalAlign = null;
-                var left = 0;
-                var top = 0;
-
-                //drawing shadow first
-                drawPieShadow(anchorX, anchorY, radius, startAngle, endAngle); 
-
-                //drawing pie    
-                ctx.beginPath();
-                ctx.moveTo(anchorX, anchorY);                
-                ctx.arc(anchorX, anchorY, radius, startAngle, endAngle, false);
-                ctx.closePath();
-                ctx.fillStyle = parseColor(series[j].color).scale(null, null, null, options.pies.fillOpacity).toString();
-
-                if(options.pies.fill)    
-                    ctx.fill();
-
-                // drawing labels
-                if (sliceMiddle <= 0.25 * (2 * Math.PI)) 
-                {
-                     // text on top and align left
-                     textAlign = "left";
-                    verticalAlign = "top";
-                    left = labelX;
-                    top = labelY + fontSize;
-                }
-                else if (sliceMiddle > 0.25 * (2 * Math.PI) && sliceMiddle <= 0.5 * (2 * Math.PI)) 
-                {
-                    // text on bottom and align left
-                    textAlign = "left";
-                    verticalAlign = "bottom";
-                    left = labelX - labelWidth;
-                    top = labelY;
-                }
-                else if (sliceMiddle > 0.5 * (2 * Math.PI) && sliceMiddle <= 0.75 * (2 * Math.PI)) 
-                {
-                    // text on bottom and align right
-                    textAlign = "right";
-                    verticalAlign = "bottom";
-                    left = labelX - labelWidth;
-                    top = labelY - fontSize;
-                }
-                else 
-                {
-                    // text on top and align right
-                    textAlign = "right";
-                    verticalAlign = "bottom";
-                    left = labelX;
-                    top = labelY - fontSize;
-                }
-
-                left = left + "px";
-                top = top + "px";
-                var textVal = Math.round(pct * 100);
-
-                if (j == series.length - 1) {
-                    if (textVal + totalPct < 100) {
-                        textVal = textVal + 1;
-                    } else if (textVal + totalPct > 100) {
-                        textVal = textVal - 1;
-                    };
-                }
-
-                var html = "<div style=\"position: absolute;zindex:11; width:" + labelWidth + "px;fontSize:" + fontSize + "px;overflow:hidden;top:"+ top + ";left:"+ left + ";textAlign:" + textAlign + ";verticalAlign:" + verticalAlign +";color:#545454;font-size:smaller;\">" +  textVal + "%</div>";
-                $(html).appendTo(target);
-
-                totalPct = totalPct + textVal;
-            }        
-		}
-		
-        function drawMyBarSeries(series, barDataRange)
-        {
-            for(i = 0; i < series.length; i++)
-            drawMultiSeriesBars(series[i], i, series.length, barDataRange);
-        }
-
-        function getDataClickPoint(pos, options, barDataRange)
-        {
-
-            var yClick = pos.y.toFixed(0);
-            var dataVal = {};
-
-            dataVal.position = pos;
-            dataVal.value = '';
-
-            if(options.points.show)
-            {
-                for(var i = 0; i < series.length; i ++)
-                {
-                    var temp = series[i].data;
-                    var xClick = parseInt(pos.x.toFixed(0));
-
-                    if(xClick < 0)
-                        xClick = 0;
-
-                    if(yClick >= temp[xClick][1] - (options.points.radius * 10) && yClick <= temp[xClick][1] + (options.points.radius * 10))
-                    {
-                        dataVal.value = temp[xClick][1];
-                        break;
-                    }
-                }
-            }
-            else if(options.bars.show)
-            {
-                xClick = pos.x;
-
-                for(var j = 0; j < barDataRange.length; j++)
-                {
-                    for(var k = 0; k < barDataRange[j].length; k++)
-                    {
-                        var temp = barDataRange[j][k];
-                        if(xClick > temp.left && xClick < temp.right)
-                        {
-                            dataVal.value = temp.value;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return dataVal;
-        }
-        
-        function drawMultiSeriesBars(series, counter, total, barDataRange) {
-            function plotBars(datapoints, barWidth, offset, fillStyleCallback, axisx, axisy, counter, total, barDataRange) {
-                var points = datapoints.points, incr = datapoints.incr;
-                
-                var shift = 0;
-				
-				if(total % 2 == 0)
-					shift = (1 + (counter  - total/2 -1)) * barWidth;
-				else
-				{
-					var interval = -1.1;
-					
-					if(counter == (total/2 - interval ))
-						shift = - barWidth * interval;
-					else
-						//shift = (interval + (counter  - Math.round(total/2))) * barWidth;
-						shift = (counter - total) * barWidth;
-				}
-				
-				var rangeData = [];
-                for (var i = 0; i < points.length; i += incr) {
-                    if (points[i] == null)
-                        continue;
-
-                    var x = points[i], y = points[i+1];
-                    var drawLeft = true, drawTop = true, drawRight = true;
-                    var left = x + shift, right = x + barWidth - 0.032 + shift, bottom = 0, top = y;
-					var rangeDataPoint = {};
-					rangeDataPoint.left = left;
-					rangeDataPoint.right = right;
-					rangeDataPoint.value = top;
-					rangeData.push(rangeDataPoint);
-
-                    if (right < series.xaxis.min || left > series.xaxis.max || top < series.yaxis.min || bottom > series.yaxis.max)
-                        continue;
-
-                    // clip
-                    if (left < series.xaxis.min) {
-                        left = series.xaxis.min;
-                        drawLeft = false;
-                    }
-
-                    if (right > series.xaxis.max) {
-                        right = series.xaxis.max;
-                        drawRight = false;
-                    }
-
-                    if (bottom < series.yaxis.min)
-                        bottom = series.yaxis.min;
-
-                    if (top > series.yaxis.max) {
-                        top = series.yaxis.max;
-                        drawTop = false;
-                    }
-					
-					if(series.bars.showShadow && series.shadowSize > 0)
-						plotShadowOutline(ctx.strokeStyle, left, bottom, top, right, drawLeft, drawRight, drawTop);
-						
-                    // fill the bar
-                    if (fillStyleCallback) {
-                        ctx.beginPath();
-                        ctx.moveTo(series.xaxis.p2c(left), series.yaxis.p2c(bottom) + offset);
-                        ctx.lineTo(series.xaxis.p2c(left), series.yaxis.p2c(top) + offset);
-                        ctx.lineTo(series.xaxis.p2c(right), series.yaxis.p2c(top) + offset);
-                        ctx.lineTo(series.xaxis.p2c(right), series.yaxis.p2c(bottom) + offset);
-                        ctx.fill();
-                    }
-
-                    // draw outline
-                    if (drawLeft || drawRight || drawTop) {
-                        ctx.beginPath();
-                        ctx.moveTo(series.xaxis.p2c(left), series.yaxis.p2c(bottom) + offset);
-                        if (drawLeft)
-                            ctx.lineTo(series.xaxis.p2c(left), series.yaxis.p2c(top) + offset);
-                        else
-                            ctx.moveTo(series.xaxis.p2c(left), series.yaxis.p2c(top) + offset);
-
-                        if (drawTop)
-                            ctx.lineTo(series.xaxis.p2c(right), series.yaxis.p2c(top) + offset);
-                        else
-                            ctx.moveTo(series.xaxis.p2c(right), series.yaxis.p2c(top) + offset);
-                        if (drawRight)
-                            ctx.lineTo(series.xaxis.p2c(right), series.yaxis.p2c(bottom) + offset);
-                        else
-                            ctx.moveTo(series.xaxis.p2c(right), series.yaxis.p2c(bottom) + offset);
-                        ctx.stroke();
-                    }
-                }
-				barDataRange.push(rangeData);
-            }
-			
-			function plotShadowOutline(orgStrokeStyle, left, bottom, top, right, drawLeft, drawRight, drawTop)
-			{
-				var orgOpac = 0.3;
-				for(var n = 1; n <= options.shadowSize/2; n++)
-				{
-					var opac = orgOpac * n;
-					ctx.beginPath();
-					ctx.strokeStyle = "rgba(0,0,0," + opac + ")";
-
-					ctx.moveTo(series.xaxis.p2c(left) + n, series.yaxis.p2c(bottom));
-
-					if(drawLeft)
-						ctx.lineTo(series.xaxis.p2c(left) + n, series.yaxis.p2c(top) - n);
-					else
-						ctx.MoveTo(series.xaxis.p2c(left) + n, series.yaxis.p2c(top) - n);
-
-					if(drawTop)	
-						ctx.lineTo(series.xaxis.p2c(right) + n, series.yaxis.p2c(top) - n);
-					else
-						ctx.moveTo(series.xaxis.p2c(right) + n, series.yaxis.p2c(top) - n);
-
-					if(drawRight)
-						ctx.lineTo(series.xaxis.p2c(right) + n, series.yaxis.p2c(bottom));
-					else
-						ctx.lineTo(series.xaxis.p2c(right) + n, series.yaxis.p2c(bottom));
-
-					ctx.stroke();
-					ctx.closePath();
-				}
-
-				ctx.strokeStyle = orgStrokeStyle;
-			}
-			
-            ctx.save();
-            ctx.translate(plotOffset.left, plotOffset.top);
-            ctx.lineJoin = "round";
-
-            // FIXME: figure out a way to add shadows (for instance along the right edge)
-            ctx.lineWidth = series.bars.lineWidth;
-            ctx.strokeStyle = series.color;
-            if (series.bars.fill) { ctx.fillStyle = series.bars.fillColor != null ? series.bars.fillColor : parseColor(series.color).scale(null, null, null, options.bars.fillOpacity).toString(); }
-            var barLeft = series.bars.align == "left" ? 0 : -series.bars.barWidth/2;
-            var fillStyleCallback = series.bars.fill ? function (bottom, top) { return getFillStyle(series.bars, series.color, bottom, top); } : null;
-            plotBars(series.datapoints, series.bars.barWidth, 0, fillStyleCallback, series.xaxis, series.yaxis, counter, total, barDataRange);
-            ctx.restore();
         }
     }
     
