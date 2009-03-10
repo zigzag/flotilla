@@ -15,8 +15,8 @@ module Flotilla
         includes << javascript_include_tag('jquery.js') + "\n"  
         includes <<  "<script language='JavaScript' type='text/javascript'> jQuery.noConflict();</script>\n"
       end
-      includes << javascript_include_tag('jquery.flot.pack.js')+ "\n"
-      includes << "<!--[if IE]>\n#{javascript_include_tag('excanvas.pack')}\n<![endif]-->"
+      includes << javascript_include_tag('jquery.flot.js')+ "\n"
+      includes << "<!--[if IE]>\n#{javascript_include_tag('excanvas.min')}\n<![endif]-->"
     end
     
       # Insert a flot chart into the page.  <tt>placeholder</tt> should be the 
