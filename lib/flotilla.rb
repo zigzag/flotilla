@@ -8,6 +8,22 @@ module Flotilla
     
     @@jrails_present = false
     mattr_accessor :jrails_present
+    
+    def js_function(function_name)
+      JavascriptFunction.new(function_name)
+    end
+    
+    class JavascriptFunction
+      attr_accessor :functionName
+      def initialize(functionName)
+        self.functionName= functionName
+        puts "******* I AM STILL HERE ***********"
+      end
+      def to_json
+        return self.functionName
+      end
+    end
+    
   
     def flot_graphs_includes
       includes= ""
