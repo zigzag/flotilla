@@ -17,7 +17,6 @@ module Flotilla
       attr_accessor :functionName
       def initialize(functionName)
         self.functionName= functionName
-        puts "******* I AM STILL HERE ***********"
       end
       def to_json
         return self.functionName
