@@ -18,7 +18,7 @@ module Flotilla
       def initialize(functionName)
         self.functionName= functionName
       end
-      def to_json
+      def to_json(opt=nil)
         return self.functionName
       end
     end
