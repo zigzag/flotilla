@@ -78,8 +78,8 @@ module Flotilla
           end
           values[:collection].each do |object|
             x_value, y_value = object.send(values[:x]), object.send(values[:y])
-            x = x_is_date ? x_value.to_time.to_i * 1000 : x_value.to_f
-            y = y_is_date ? y_value.to_time.to_i * 1000 : y_value.to_f
+            x = x_is_date ? (x_value.to_time.to_i + Time.now.utc_offset) * 1000 : x_value.to_f
+            y = y_is_date ? (y_value.to_time.to_i + Time.now.utc_offset) * 1000 : y_value.to_f
             data << [x,y]
           end
           set[:data] = data
